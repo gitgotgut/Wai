@@ -1,0 +1,11 @@
+src/
+tsconfig*.json
+esbuild.mjs
+jest.config.js
+.eslintrc.json
+.github/
+**/*.test.ts
+**/*.test.tsx
+**/*.map
+.gitignore
+node_modules/

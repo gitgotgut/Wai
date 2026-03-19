@@ -1,0 +1,51 @@
+{
+  "name": "wai",
+  "displayName": "Wai - AI Usage Analytics",
+  "description": "Track and analyze AI-assisted coding patterns, token consumption, and developer productivity in VS Code",
+  "version": "0.0.1",
+  "publisher": "wai-team",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "wai.openDashboard",
+        "title": "Wai: Open Dashboard"
+      },
+      {
+        "command": "wai.inputApiKey",
+        "title": "Wai: Set API Key"
+      },
+      {
+        "command": "wai.resetStats",
+        "title": "Wai: Reset Statistics"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "vsce package",
+    "test": "jest --config jest.config.js",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.24.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "typescript": "^5.5.0"
+  }
+}

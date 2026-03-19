@@ -1,0 +1,10 @@
+node_modules/
+dist/
+media/dashboard.js
+media/dashboard.js.map
+media/dashboard.css
+*.vsix
+.DS_Store
+.env
+.vscode-test/
+*.log

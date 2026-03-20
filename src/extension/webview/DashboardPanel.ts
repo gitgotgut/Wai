@@ -48,6 +48,11 @@ export class DashboardPanel {
     this.panel.webview.postMessage({ type: "statsUpdate", payload: stats });
   }
 
+  /** Push token usage data to the webview. */
+  postTokenUsage(usage: unknown): void {
+    this.panel.webview.postMessage({ type: "tokenUsageUpdate", payload: usage });
+  }
+
   // ── Private helpers ───────────────────────────────────────────────
 
   private buildHtml(): string {

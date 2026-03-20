@@ -1,0 +1,186 @@
+/* Wai Dashboard — uses VS Code's built-in CSS variables for theme integration */
+
+:root {
+  --bar-ok: #4caf50;
+  --bar-warning: #ff9800;
+  --bar-danger: #f44336;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--vscode-font-family, system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  padding: 24px;
+}
+
+.dashboard h1 {
+  font-size: 1.6em;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--vscode-foreground);
+}
+
+/* ── Metrics Grid ──────────────────────────────────────────────── */
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px;
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, #1e1e1e);
+  border: 1px solid var(--vscode-editorWidget-border, #333);
+}
+
+.metric-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.metric-card.hero {
+  padding: 20px 12px;
+}
+
+.metric-card.hero .metric-value {
+  font-size: 2.2em;
+}
+
+.metric-value {
+  font-size: 1.8em;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.metric-value.secondary {
+  font-size: 1.3em;
+  opacity: 0.85;
+}
+
+.metric-label {
+  font-size: 0.85em;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+/* ── Rate Limit Bar ────────────────────────────────────────────── */
+
+.rate-limit {
+  margin-bottom: 16px;
+}
+
+.rate-limit-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.9em;
+}
+
+.rate-limit-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background, #1e1e1e);
+  overflow: hidden;
+}
+
+.rate-limit-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* ── Activity Chart Placeholder ────────────────────────────────── */
+
+.activity-chart-placeholder {
+  padding: 32px;
+  text-align: center;
+  opacity: 0.5;
+  border: 1px dashed var(--vscode-editorWidget-border, #333);
+  border-radius: 6px;
+}
+
+/* ── Language Breakdown ────────────────────────────────────────── */
+
+.language-breakdown {
+  margin-bottom: 24px;
+}
+
+.language-breakdown h2 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.lang-list {
+  list-style: none;
+}
+
+.lang-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.lang-name {
+  width: 110px;
+  font-size: 0.9em;
+  flex-shrink: 0;
+}
+
+.lang-bar-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background, #1e1e1e);
+  overflow: hidden;
+}
+
+.lang-bar-ai {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--vscode-textLink-foreground, #3794ff);
+  min-width: 2px;
+}
+
+.lang-stat {
+  width: 80px;
+  text-align: right;
+  font-size: 0.85em;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* ── Token Estimate ───────────────────────────────────────────── */
+
+.token-estimate {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, #1e1e1e);
+  border: 1px solid var(--vscode-editorWidget-border, #333);
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+/* ── Misc ──────────────────────────────────────────────────────── */
+
+.loading {
+  opacity: 0.5;
+  text-align: center;
+  padding: 32px;
+}

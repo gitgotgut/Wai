@@ -5,6 +5,8 @@ import { SessionTracker } from "./collectors/SessionTracker";
 import { StateManager } from "./storage/StateManager";
 import { SecretManager } from "./storage/SecretManager";
 import { DashboardPanel } from "./webview/DashboardPanel";
+import { StatusBarController } from "./ui/StatusBarController";
+import { TokenPoller } from "./api/TokenPoller";
 
 const SYNC_INTERVAL_MS = 30_000;
 
@@ -16,20 +18,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // ── Initialise core services ──────────────────────────────────────
   const stateManager = new StateManager(context);
-  const _secretManager = new SecretManager(stateManager); // used in Phase 2
+  const secretManager = new SecretManager(stateManager);
   const changeClassifier = new ChangeClassifier();
   const eventCollector = new EventCollector();
   sessionTracker = new SessionTracker(stateManager, eventCollector);
 
   await sessionTracker.restore();
 
+  // ── Status bar ────────────────────────────────────────────────────
+  const statusBar = new StatusBarController();
+  statusBar.update(sessionTracker.getStats());
+  context.subscriptions.push(statusBar);
+
+  // ── Token poller ──────────────────────────────────────────────────
+  const tokenPoller = new TokenPoller(
+    stateManager,
+    secretManager,
+    output,
+    () => sessionTracker?.getStats().aiGenerated ?? 0,
+  );
+
+  // Start polling if any API key is stored
+  const hasKey = (await secretManager.getApiKey("openai")) || (await secretManager.getApiKey("anthropic"));
+  if (hasKey) {
+    tokenPoller.start();
+  }
+  context.subscriptions.push({ dispose: () => tokenPoller.stop() });
+
   // ── Commands ──────────────────────────────────────────────────────
   context.subscriptions.push(
-    vscode.commands.registerCommand("wai.openDashboard", () => {
+    vscode.commands.registerCommand("wai.openDashboard", async () => {
       const dashboard = DashboardPanel.createOrShow(context.extensionUri, (msg) => {
         handleWebviewMessage(msg, sessionTracker!, dashboard);
       });
       dashboard.postStats(sessionTracker!.getStats());
+
+      const tokenUsage = await tokenPoller.getLastUsage();
+      if (tokenUsage) {
+        dashboard.postTokenUsage(tokenUsage);
+      }
     }),
   );
 
@@ -47,10 +74,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       });
       if (!key) return;
 
-      await _secretManager.setApiKey(provider as "openai" | "anthropic", key);
+      await secretManager.setApiKey(provider as "openai" | "anthropic", key);
       vscode.window.showInformationMessage(
         `Wai: ${provider} API key stored securely (${SecretManager.mask(key)}).`,
       );
+
+      // Start polling now that we have a key
+      tokenPoller.start();
     }),
   );
 
@@ -66,7 +96,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await sessionTracker!.reset();
       vscode.window.showInformationMessage("Wai: Statistics have been reset.");
 
-      // Update dashboard if open
+      statusBar.update(sessionTracker!.getStats());
       DashboardPanel.current?.postStats(sessionTracker!.getStats());
     }),
   );
@@ -79,8 +109,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       for (const change of event.contentChanges) {
         const result = changeClassifier.classify(change);
-        eventCollector.recordChange(result, event.document.languageId);
+        eventCollector.recordChange(result, event.document.languageId, change.text);
       }
+
+      // Live status bar update (throttled internally)
+      statusBar.update(sessionTracker!.getStats());
     }),
   );
 
@@ -89,8 +122,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (eventCollector.eventCount > 0) {
       await sessionTracker!.persist();
 
-      // Push live update to dashboard if visible
-      DashboardPanel.current?.postStats(sessionTracker!.getStats());
+      const stats = sessionTracker!.getStats();
+      statusBar.update(stats);
+      DashboardPanel.current?.postStats(stats);
+
+      const tokenUsage = await tokenPoller.getLastUsage();
+      if (tokenUsage) {
+        DashboardPanel.current?.postTokenUsage(tokenUsage);
+      }
     }
   }, SYNC_INTERVAL_MS);
 
@@ -100,7 +139,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export async function deactivate(): Promise<void> {
-  // Final flush before shutdown
   await sessionTracker?.persist();
 }
 

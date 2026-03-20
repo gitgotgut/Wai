@@ -4,8 +4,25 @@ export interface ChangeEvent {
   type: ChangeType;
   confidence: number;
   characterCount: number;
+  lineCount: number;
   timestamp: number;
   languageId: string;
+}
+
+export interface DailySnapshot {
+  date: string;
+  aiGenerated: number;
+  humanTyping: number;
+  pastes: number;
+  aiLinesGenerated: number;
+  humanLinesTyped: number;
+}
+
+export interface LanguageStats {
+  ai: number;
+  human: number;
+  aiLines: number;
+  humanLines: number;
 }
 
 export interface SessionStats {
@@ -16,6 +33,19 @@ export interface SessionStats {
   sessions: number;
   uniqueDaysActive: string[];
   commandUsageCount: Record<string, number>;
+  aiLinesGenerated: number;
+  humanLinesTyped: number;
+  dailyHistory: DailySnapshot[];
+  byLanguage: Record<string, LanguageStats>;
+}
+
+export interface FlushResult {
+  humanTyping: number;
+  aiGenerated: number;
+  pastes: number;
+  humanLinesTyped: number;
+  aiLinesGenerated: number;
+  byLanguage: Record<string, LanguageStats>;
 }
 
 export function emptyStats(): SessionStats {
@@ -27,7 +57,20 @@ export function emptyStats(): SessionStats {
     sessions: 0,
     uniqueDaysActive: [],
     commandUsageCount: {},
+    aiLinesGenerated: 0,
+    humanLinesTyped: 0,
+    dailyHistory: [],
+    byLanguage: {},
   };
+}
+
+function countLines(text: string): number {
+  if (text.length === 0) return 0;
+  let count = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) === 10) count++;
+  }
+  return count;
 }
 
 /**
@@ -36,31 +79,46 @@ export function emptyStats(): SessionStats {
  */
 export class EventCollector {
   private events: ChangeEvent[] = [];
-  private readonly sessionStart = Date.now();
 
-  recordChange(classification: ClassificationResult, languageId: string): void {
+  recordChange(classification: ClassificationResult, languageId: string, text: string): void {
     this.events.push({
       type: classification.type,
       confidence: classification.confidence,
       characterCount: classification.characterCount,
+      lineCount: countLines(text),
       timestamp: Date.now(),
       languageId,
     });
   }
 
   /** Compute aggregate stats for all buffered events, then clear the buffer. */
-  flush(): { humanTyping: number; aiGenerated: number; pastes: number } {
+  flush(): FlushResult {
     let humanTyping = 0;
     let aiGenerated = 0;
     let pastes = 0;
+    let humanLinesTyped = 0;
+    let aiLinesGenerated = 0;
+    const byLanguage: Record<string, LanguageStats> = {};
 
     for (const e of this.events) {
+      // Ensure per-language bucket exists
+      if (!byLanguage[e.languageId]) {
+        byLanguage[e.languageId] = { ai: 0, human: 0, aiLines: 0, humanLines: 0 };
+      }
+      const lang = byLanguage[e.languageId];
+
       switch (e.type) {
         case ChangeType.HUMAN_TYPING:
           humanTyping += e.characterCount;
+          humanLinesTyped += e.lineCount;
+          lang.human += e.characterCount;
+          lang.humanLines += e.lineCount;
           break;
         case ChangeType.AI_GENERATED:
           aiGenerated += e.characterCount;
+          aiLinesGenerated += e.lineCount;
+          lang.ai += e.characterCount;
+          lang.aiLines += e.lineCount;
           break;
         case ChangeType.PASTE:
           pastes += e.characterCount;
@@ -69,7 +127,7 @@ export class EventCollector {
     }
 
     this.events = [];
-    return { humanTyping, aiGenerated, pastes };
+    return { humanTyping, aiGenerated, pastes, humanLinesTyped, aiLinesGenerated, byLanguage };
   }
 
   get eventCount(): number {

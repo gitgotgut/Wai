@@ -2,9 +2,18 @@
   "name": "wai",
   "displayName": "Wai - AI Usage Analytics",
   "description": "Track and analyze AI-assisted coding patterns, token consumption, and developer productivity in VS Code",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "wai-team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gitgotgut/Wai.git"
+  },
+  "homepage": "https://github.com/gitgotgut/Wai",
+  "bugs": {
+    "url": "https://github.com/gitgotgut/Wai/issues"
+  },
+  "keywords": ["ai", "productivity", "analytics", "copilot", "tracking"],
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -28,13 +37,30 @@
       {
         "command": "wai.resetStats",
         "title": "Wai: Reset Statistics"
+      },
+      {
+        "command": "wai.exportStats",
+        "title": "Wai: Export Statistics"
+      },
+      {
+        "command": "wai.recordTabAccept",
+        "title": "Wai: Record Tab Accept"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "wai.recordTabAccept",
+        "key": "tab",
+        "when": "editorTextFocus && !editorReadonly && !suggestWidgetVisible && !inSnippetMode"
       }
     ]
   },
   "scripts": {
     "compile": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "package": "vsce package",
+    "package": "vsce package --allow-missing-repository",
+    "publish:ovsx": "ovsx publish wai-*.vsix -p $OVSX_TOKEN",
+    "publish:all": "npm run package && npm run publish:ovsx",
     "test": "jest --config jest.config.js",
     "lint": "eslint src --ext .ts,.tsx"
   },
@@ -44,8 +70,10 @@
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.24.0",
+    "ovsx": "^0.9.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vsce": "^2.0.0"
   }
 }

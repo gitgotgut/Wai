@@ -1,12 +1,15 @@
 import * as vscode from "vscode";
 import { ChangeClassifier, isTrackedLanguage } from "./heuristics/ChangeClassifier";
+import { TabAcceptTracker } from "./heuristics/TabAcceptTracker";
 import { EventCollector } from "./collectors/EventCollector";
 import { SessionTracker } from "./collectors/SessionTracker";
 import { StateManager } from "./storage/StateManager";
 import { SecretManager } from "./storage/SecretManager";
 import { DashboardPanel } from "./webview/DashboardPanel";
 import { StatusBarController } from "./ui/StatusBarController";
+import { DigestNotifier } from "./ui/DigestNotifier";
 import { TokenPoller } from "./api/TokenPoller";
+import { StatsExporter } from "./exporters/StatsExporter";
 
 const SYNC_INTERVAL_MS = 30_000;
 
@@ -19,11 +22,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ── Initialise core services ──────────────────────────────────────
   const stateManager = new StateManager(context);
   const secretManager = new SecretManager(stateManager);
-  const changeClassifier = new ChangeClassifier();
+  const tabTracker = new TabAcceptTracker();
+  const changeClassifier = new ChangeClassifier(tabTracker);
   const eventCollector = new EventCollector();
   sessionTracker = new SessionTracker(stateManager, eventCollector);
 
   await sessionTracker.restore();
+
+  // ── Weekly digest notification ────────────────────────────────────
+  const digestNotifier = new DigestNotifier(stateManager);
+  try {
+    await digestNotifier.maybeNotify(sessionTracker.getStats());
+  } catch (err) {
+    output.appendLine(`Wai: digest notification error: ${err}`);
+  }
 
   // ── Status bar ────────────────────────────────────────────────────
   const statusBar = new StatusBarController();
@@ -98,6 +110,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       statusBar.update(sessionTracker!.getStats());
       DashboardPanel.current?.postStats(sessionTracker!.getStats());
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("wai.exportStats", () =>
+      StatsExporter.export(sessionTracker!.getStats()),
+    ),
+  );
+
+  // ── Tab-accept keybinding command ─────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand("wai.recordTabAccept", async () => {
+      tabTracker.recordTabPress();
+      await vscode.commands.executeCommand("tab");
     }),
   );
 

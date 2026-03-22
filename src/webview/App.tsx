@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useVSCodeAPI } from "./hooks/useVSCodeAPI";
 import { MetricsSummary } from "./components/MetricsSummary";
 import { LanguageBreakdown } from "./components/LanguageBreakdown";
@@ -83,7 +83,7 @@ export function App() {
         </div>
       )}
 
-      <ActivityChart />
+      <ActivityChart dailyHistory={stats?.dailyHistory ?? []} />
     </main>
   );
 }

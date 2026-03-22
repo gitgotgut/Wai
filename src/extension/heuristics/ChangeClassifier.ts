@@ -1,4 +1,5 @@
 import type { TextDocumentContentChangeEvent } from "vscode";
+import type { TabAcceptTracker } from "./TabAcceptTracker";
 
 export enum ChangeType {
   HUMAN_TYPING = "human",
@@ -55,6 +56,7 @@ export function isTrackedLanguage(languageId: string): boolean {
  * human typing, and clipboard pastes using observable text-change signals.
  *
  * Signals used:
+ *  - Tab-accept: Tab keypress followed by insertion >3 chars → AI (0.95 confidence)
  *  - Insertion size (character count)
  *  - Presence of newlines (multi-line → likely AI)
  *  - Time since previous change event (rapid large insertion → paste)
@@ -65,12 +67,22 @@ export function isTrackedLanguage(languageId: string): boolean {
 export class ChangeClassifier {
   private lastChangeTime = Date.now();
 
+  constructor(private readonly tabTracker?: TabAcceptTracker) {}
+
   classify(change: TextDocumentContentChangeEvent): ClassificationResult {
     const now = Date.now();
     const elapsed = now - this.lastChangeTime;
     this.lastChangeTime = now;
 
     const size = change.text.length;
+
+    // ── Tab-accept heuristic (Copilot ghost-text) ───────────────────
+    if (this.tabTracker?.consumeTabAccept()) {
+      if (size > 3) {
+        return { type: ChangeType.AI_GENERATED, confidence: 0.95, characterCount: size };
+      }
+      // size <= 3: likely plain indentation — fall through to normal logic
+    }
 
     // Deletions only (no new text inserted)
     if (size === 0) {

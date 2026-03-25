@@ -1,79 +1,19 @@
 {
   "name": "wai",
-  "displayName": "Wai - AI Usage Analytics",
-  "description": "Track and analyze AI-assisted coding patterns, token consumption, and developer productivity in VS Code",
-  "version": "0.1.0",
-  "publisher": "wai-team",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/gitgotgut/Wai.git"
-  },
-  "homepage": "https://github.com/gitgotgut/Wai",
-  "bugs": {
-    "url": "https://github.com/gitgotgut/Wai/issues"
-  },
-  "keywords": ["ai", "productivity", "analytics", "copilot", "tracking"],
-  "engines": {
-    "vscode": "^1.85.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "main": "./dist/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "wai.openDashboard",
-        "title": "Wai: Open Dashboard"
-      },
-      {
-        "command": "wai.inputApiKey",
-        "title": "Wai: Set API Key"
-      },
-      {
-        "command": "wai.resetStats",
-        "title": "Wai: Reset Statistics"
-      },
-      {
-        "command": "wai.exportStats",
-        "title": "Wai: Export Statistics"
-      },
-      {
-        "command": "wai.recordTabAccept",
-        "title": "Wai: Record Tab Accept"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "wai.recordTabAccept",
-        "key": "tab",
-        "when": "editorTextFocus && !editorReadonly && !suggestWidgetVisible && !inSnippetMode"
-      }
-    ]
-  },
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "compile": "node esbuild.mjs",
-    "watch": "node esbuild.mjs --watch",
-    "package": "vsce package --allow-missing-repository",
-    "publish:ovsx": "ovsx publish wai-*.vsix -p $OVSX_TOKEN",
-    "publish:all": "npm run package && npm run publish:ovsx",
-    "test": "jest --config jest.config.js",
-    "lint": "eslint src --ext .ts,.tsx"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:push": "cd apps/web && npx drizzle-kit push",
+    "db:generate": "cd apps/web && npx drizzle-kit generate",
+    "db:migrate": "cd apps/web && npx drizzle-kit migrate"
   },
+  "packageManager": "npm@11.8.0",
   "devDependencies": {
-    "@types/node": "^18.19.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@types/vscode": "^1.85.0",
-    "esbuild": "^0.24.0",
-    "ovsx": "^0.9.0",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "typescript": "^5.5.0",
-    "vsce": "^2.0.0"
+    "turbo": "^2.3.0",
+    "typescript": "^5.5.0"
   }
 }

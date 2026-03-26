@@ -1,6 +1,6 @@
 import {
   pgTable, text, timestamp, integer, uuid, varchar,
-  uniqueIndex, primaryKey,
+  uniqueIndex, primaryKey, index, boolean, jsonb,
 } from "drizzle-orm/pg-core";
 
 // ─── NextAuth tables ───────────────────────────────────
@@ -63,4 +63,38 @@ export const workspaceMembers = pgTable("workspace_members", {
   joinedAt: timestamp("joined_at", { mode: "date" }).defaultNow().notNull(),
 }, (t) => [
   primaryKey({ columns: [t.workspaceId, t.userId] }),
+]);
+
+// ─── Agents ────────────────────────────────────────────
+
+export const agents = pgTable("agents", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  systemPrompt: text("system_prompt").notNull().default("You are a helpful assistant."),
+  model: text("model").notNull().default("gpt-4o"),
+  provider: text("provider", { enum: ["openai", "anthropic", "google"] }).notNull().default("openai"),
+  tools: jsonb("tools").$type<string[]>().default([]),
+  knowledgeBase: jsonb("knowledge_base").$type<{ type: string; ref: string }[]>().default([]),
+  isPublic: boolean("is_public").notNull().default(false),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+}, (t) => [
+  index("agents_workspace_idx").on(t.workspaceId),
+]);
+
+// ─── API Keys (encrypted at rest) ─────────────────────
+
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider", { enum: ["openai", "anthropic", "google"] }).notNull(),
+  encryptedKey: text("encrypted_key").notNull(),
+  iv: text("iv").notNull(),
+  label: text("label").notNull().default("Default"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+}, (t) => [
+  index("api_keys_user_idx").on(t.userId),
 ]);

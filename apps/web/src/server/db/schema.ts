@@ -1,5 +1,5 @@
 import {
-  pgTable, text, timestamp, integer, uuid, varchar,
+  pgTable, text, timestamp, integer, uuid, varchar, real,
   uniqueIndex, primaryKey, index, boolean, jsonb,
 } from "drizzle-orm/pg-core";
 
@@ -97,4 +97,52 @@ export const apiKeys = pgTable("api_keys", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 }, (t) => [
   index("api_keys_user_idx").on(t.userId),
+]);
+
+// ─── Conversations & Messages ──────────────────────────
+
+export const conversations = pgTable("conversations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  agentId: uuid("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("New conversation"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+}, (t) => [
+  index("conversations_agent_idx").on(t.agentId),
+  index("conversations_user_idx").on(t.userId),
+]);
+
+export const messages = pgTable("messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
+  content: text("content").notNull(),
+  tokenCountIn: integer("token_count_in"),
+  tokenCountOut: integer("token_count_out"),
+  costEstimate: real("cost_estimate"),
+  model: text("model"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+}, (t) => [
+  index("messages_conversation_idx").on(t.conversationId),
+]);
+
+// ─── Usage Records ─────────────────────────────────────
+
+export const usageRecords = pgTable("usage_records", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  workspaceId: uuid("workspace_id").references(() => workspaces.id),
+  agentId: uuid("agent_id").references(() => agents.id),
+  conversationId: uuid("conversation_id").references(() => conversations.id),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  tokensIn: integer("tokens_in").notNull().default(0),
+  tokensOut: integer("tokens_out").notNull().default(0),
+  cost: real("cost").notNull().default(0),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+}, (t) => [
+  index("usage_user_idx").on(t.userId),
+  index("usage_workspace_idx").on(t.workspaceId),
+  index("usage_created_idx").on(t.createdAt),
 ]);

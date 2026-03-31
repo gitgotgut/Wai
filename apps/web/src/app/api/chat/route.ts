@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, convertToModelMessages } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -41,11 +41,17 @@ export async function POST(req: Request) {
   // 3. Create provider client
   const providerClient = createProviderClient(agent.provider, decryptedKey);
 
-  // 4. Resolve or create conversation
+  // 4. Extract text content from UIMessage parts (v6 format)
+  function getTextContent(msg: { parts?: Array<{ type: string; text?: string }> }): string {
+    if (!msg.parts) return "";
+    return msg.parts.filter((p) => p.type === "text").map((p) => p.text ?? "").join("");
+  }
+
+  // 5. Resolve or create conversation
   let convId = conversationId;
   if (!convId) {
     const firstUserMsg = chatMessages.find((m: { role: string }) => m.role === "user");
-    const title = firstUserMsg?.content?.slice(0, 80) || "New conversation";
+    const title = getTextContent(firstUserMsg).slice(0, 80) || "New conversation";
     const [conv] = await db.insert(conversations).values({
       agentId: agent.id,
       userId: userId,
@@ -54,20 +60,21 @@ export async function POST(req: Request) {
     convId = conv.id;
   }
 
-  // 5. Persist user message
+  // 6. Persist user message
   const lastUserMsg = chatMessages[chatMessages.length - 1];
   if (lastUserMsg?.role === "user") {
     await db.insert(messages).values({
       conversationId: convId,
       role: "user",
-      content: lastUserMsg.content,
+      content: getTextContent(lastUserMsg),
     });
   }
 
-  // 6. Stream response
+  // 7. Stream response — convert UIMessage[] → CoreMessage[] for streamText
+  const coreMessages = await convertToModelMessages(chatMessages);
   const fullMessages = [
     { role: "system" as const, content: agent.systemPrompt },
-    ...chatMessages,
+    ...coreMessages,
   ];
 
   const result = streamText({

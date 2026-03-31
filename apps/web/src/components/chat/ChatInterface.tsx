@@ -1,8 +1,9 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { TextStreamChatTransport } from "ai";
 import { MessageBubble } from "./MessageBubble";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ChatInterfaceProps {
   agentId: string;
@@ -12,16 +13,32 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ agentId, conversationId, initialMessages }: ChatInterfaceProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState("");
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: "/api/chat",
-    body: { agentId, conversationId },
-    initialMessages,
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new TextStreamChatTransport({
+      api: "/api/chat",
+      body: { agentId, conversationId },
+    }),
+    messages: initialMessages?.map((m) => ({
+      id: m.id,
+      role: m.role,
+      parts: [{ type: "text" as const, text: m.content }],
+    })),
   });
+
+  const isLoading = status === "streaming" || status === "submitted";
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage({ role: "user", parts: [{ type: "text", text: input }] });
+    setInput("");
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -32,7 +49,11 @@ export function ChatInterface({ agentId, conversationId, initialMessages }: Chat
           </div>
         )}
         {messages.map((m) => (
-          <MessageBubble key={m.id} role={m.role as "user" | "assistant"} content={m.content} />
+          <MessageBubble
+            key={m.id}
+            role={m.role as "user" | "assistant"}
+            content={m.parts.find((p) => p.type === "text")?.text ?? ""}
+          />
         ))}
         {isLoading && messages[messages.length - 1]?.role === "user" && (
           <div className="flex justify-start">
@@ -51,14 +72,14 @@ export function ChatInterface({ agentId, conversationId, initialMessages }: Chat
       <form onSubmit={handleSubmit} className="flex gap-2 border-t p-4">
         <textarea
           value={input}
-          onChange={handleInputChange}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message..."
           className="flex-1 resize-none rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900"
           rows={1}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+              handleSubmit(e as unknown as React.FormEvent);
             }
           }}
         />

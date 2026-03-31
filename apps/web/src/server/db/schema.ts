@@ -146,3 +146,22 @@ export const usageRecords = pgTable("usage_records", {
   index("usage_workspace_idx").on(t.workspaceId),
   index("usage_created_idx").on(t.createdAt),
 ]);
+
+// ─── Extension Syncs ────────────────────────────────────
+
+export const extensionSyncs = pgTable("extension_syncs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  deviceId: text("device_id").notNull(),
+  deviceName: text("device_name").notNull(),
+  extensionVersion: text("extension_version").notNull(),
+  statsSnapshot: jsonb("stats_snapshot").notNull(),
+  syncToken: text("sync_token"),
+  lastSyncAt: timestamp("last_sync_at", { mode: "date" }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("extension_syncs_device_idx").on(t.userId, t.deviceId),
+  index("extension_syncs_user_idx").on(t.userId),
+  index("extension_syncs_updated_idx").on(t.updatedAt),
+]);

@@ -10,10 +10,12 @@ import { StatusBarController } from "./ui/StatusBarController";
 import { DigestNotifier } from "./ui/DigestNotifier";
 import { TokenPoller } from "./api/TokenPoller";
 import { StatsExporter } from "./exporters/StatsExporter";
+import { SyncManager } from "./sync/SyncManager";
 
 const SYNC_INTERVAL_MS = 30_000;
 
 let sessionTracker: SessionTracker | undefined;
+let syncManager: SyncManager | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel("Wai");
@@ -119,6 +121,43 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ),
   );
 
+  // ── Platform sync ────────────────────────────────────────────────
+  syncManager = new SyncManager(context, stateManager, output, sessionTracker);
+  const syncInitialized = await syncManager.tryInitialize();
+  if (syncInitialized) {
+    output.appendLine("Wai: Platform sync started.");
+  }
+  context.subscriptions.push({ dispose: () => syncManager?.dispose() });
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("wai.configureSyncToken", async () => {
+      const token = await vscode.window.showInputBox({
+        placeHolder: "Paste your sync token from the Wai platform",
+        prompt: "Enter your platform sync token (from Settings > Extensions)",
+        password: true,
+        ignoreFocusOut: true,
+      });
+
+      if (!token) return;
+
+      await syncManager!.setToken(token);
+      vscode.window.showInformationMessage(
+        "Wai: Sync token saved. Stats will sync to the platform every 30 minutes.",
+      );
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("wai.syncNow", async () => {
+      const result = await syncManager!.sync();
+      if (result.success) {
+        vscode.window.showInformationMessage("Wai: Synced to platform successfully.");
+      } else {
+        vscode.window.showWarningMessage(`Wai: Sync failed — ${result.error}`);
+      }
+    }),
+  );
+
   // ── Tab-accept keybinding command ─────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand("wai.recordTabAccept", async () => {
@@ -166,6 +205,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export async function deactivate(): Promise<void> {
   await sessionTracker?.persist();
+  await syncManager?.dispose();
 }
 
 // ── Webview IPC handler ──────────────────────────────────────────────

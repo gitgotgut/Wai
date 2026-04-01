@@ -45,8 +45,31 @@
       {
         "command": "wai.recordTabAccept",
         "title": "Wai: Record Tab Accept"
+      },
+      {
+        "command": "wai.configureSyncToken",
+        "title": "Wai: Configure Platform Sync"
+      },
+      {
+        "command": "wai.syncNow",
+        "title": "Wai: Sync to Platform Now"
       }
     ],
+    "configuration": {
+      "title": "Wai Analytics",
+      "properties": {
+        "wai.platform.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable syncing local stats to the Wai platform."
+        },
+        "wai.platform.url": {
+          "type": "string",
+          "default": "https://wai.example.com",
+          "description": "URL of the Wai platform for syncing."
+        }
+      }
+    },
     "keybindings": [
       {
         "command": "wai.recordTabAccept",
